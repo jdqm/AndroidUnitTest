@@ -35,9 +35,10 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test:rules:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
-    // Optional -- Mockito framework
-    testImplementation 'org.mockito:mockito-core:2.19.1'
-
+    // Optional -- Mockito framework (powermock兼容这个版本，为了演示powermock暂时不使用新版本)
+    testImplementation 'org.mockito:mockito-core:2.8.9'
+    testImplementation 'org.powermock:powermock-api-mockito2:1.7.4'
+    testImplementation 'org.powermock:powermock-module-junit4:1.7.4'
 
 
 }
