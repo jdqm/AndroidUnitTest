@@ -1,7 +1,10 @@
 package com.jdqm.androidunittest;
 
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
+
+import junit.framework.Test;
 
 import java.util.regex.Pattern;
 
@@ -32,11 +35,15 @@ public class EmailValidator implements TextWatcher {
     /**
      * Validates if the given input is a valid email address.
      *
-     * @param email        The email to validate.
+     * @param email The email to validate.
      * @return {@code true} if the input is a valid email. {@code false} otherwise.
      */
     public static boolean isValidEmail(CharSequence email) {
-        return email != null && EMAIL_PATTERN.matcher(email).matches();
+
+        if (TextUtils.isEmpty(email)) {
+            return false;
+        }
+        return EMAIL_PATTERN.matcher(email).matches();
     }
 
     @Override
