@@ -24,6 +24,13 @@ android {
             showStandardStreams = true
         }
     }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+
 }
 
 dependencies {
@@ -40,5 +47,5 @@ dependencies {
     testImplementation 'org.powermock:powermock-api-mockito2:1.7.4'
     testImplementation 'org.powermock:powermock-module-junit4:1.7.4'
 
-
+    testImplementation "org.robolectric:robolectric:3.8"
 }
