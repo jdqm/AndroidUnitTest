@@ -48,4 +48,6 @@ dependencies {
     testImplementation 'org.powermock:powermock-module-junit4:1.7.4'
 
     testImplementation "org.robolectric:robolectric:3.8"
+    //数据库、SharedPreferences调试，直接在浏览器查看设备数据库、SharedPreferences数据
+    debugImplementation 'com.amitshekhar.android:debug-db:1.0.4'
 }
