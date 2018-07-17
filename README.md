@@ -1,6 +1,7 @@
 # AndroidUnitTest
 
 
+
 单元测试是应用程序测试策略中的基本测试，通过对代码进行单元测试，可以轻松地验证单个单元的逻辑是否正确，在每次构建之后运行单元测试，可以帮助您快速捕获和修复因代码更改（重构、优化等）带来的回归问题。本文主要聊聊Android中的单元测试，主要内容如下：
 
 1. 单元测试的目的以及测试内容
@@ -84,7 +85,7 @@ import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 
 public class EmailValidatorTest {
-    
+
     @Test
     public void isValidEmail() {
         assertThat(EmailValidator.isValidEmail("name@email.com"), is(true));
@@ -97,6 +98,25 @@ public class EmailValidatorTest {
 1. 运行单个测试方法：选中@Test注解或者方法名，右键选择**Run**；
 2. 运行一个测试类中的所有测试方法：打开类文件，在类的范围内右键选择**Run**，或者直接选择类文件直接右键**Run**；
 3. 运行一个目录下的所有测试类：选择这个目录，右键**Run**。
+
+- 运行前面测试验证邮箱格式的例子，测试结果会在**Run**窗口展示，如下图：
+
+![本地单元测试-通过](https://upload-images.jianshu.io/upload_images/3631399-c21d2da0f7d88b9e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+从结果可以清晰的看出，测试的方法为 ```EmailValidatorTest``` 类中的 ```isValidEmail()```方法，测试状态为passed，耗时12毫秒。
+
+修改一下前面的例子，传入一个非法的邮箱地址：
+```
+@Test
+public void isValidEmail() {
+    assertThat(EmailValidator.isValidEmail("#name@email.com"), is(true));
+}
+```
+
+![本地单元测试-失败](https://upload-images.jianshu.io/upload_images/3631399-bfe8506dd335f1ad.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+测试状态为failed，耗时14毫秒，同时也给出了详细的错误信息：在15行出现了断言错误，错误原因是期望值(Expected)为true，但实际(Actual)结果为false。
+
 
 也可以通过命令 ```gradlew test``` 来运行所有的测试用例，这种方式可以添加如下配置，输出单元测试过程中各类测试信息：
 
@@ -112,8 +132,15 @@ android {
     }
 }
 ```
+还是验证邮箱地址格式的例子 ```gradlew test```：
+
+![gradlew test](https://upload-images.jianshu.io/upload_images/3631399-92fe6f1019f445bb.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+在单元测试中通过System.out或者System.err打印的也会输出。
+
+
 - 通过模拟框架模拟依赖，隔离依赖
-前面验证邮件格式的例子，本地JVM虚拟机就能提供足够的运行环境，但如果要测试的单元依赖了Android框架，比如用到了Android中的Context类的一些方法，本地JVM将无法提供这样的环境，这时候模拟框架[Mockito][1]就该上场了。
+前面验证邮件格式的例子，本地JVM虚拟机就能提供足够的运行环境，但如果要测试的单元依赖了Android框架，比如用到了Android中的Context类的一些方法，本地JVM将无法提供这样的环境，这时候模拟框架[Mockito][1]就派上用场了。
 
 - 一个Context#getString(int)的测试用例
 ```
@@ -133,16 +160,23 @@ public class MockUnitTest {
         //模拟方法调用的返回值，隔离对Android系统的依赖
         when(mMockContext.getString(R.string.app_name)).thenReturn(FAKE_STRING);
         assertThat(mMockContext.getString(R.string.app_name), is(FAKE_STRING));
+
+        when(mMockContext.getPackageName()).thenReturn("com.jdqm.androidunittest");
+        System.out.println(mMockContext.getPackageName());
     }
 }
 ```
+
+![read string from context](https://upload-images.jianshu.io/upload_images/3631399-6562a503401d7f03.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 通过模拟框架[Mockito][1]，指定调用context.getString(int)方法的返回值，达到了隔离依赖的目的，其中[Mockito][1]使用的是[cglib][2]动态代理技术。
 
 
 # 五、仪器化测试
 
-通过模拟的手段来隔离Android依赖有时候代价很大，这种情况下可以考虑仪器化的单元测试，有助于减少编写和维护模拟代码所需的工作量，但由于要跑到真机或模拟器上，所以会慢一些。
+在某些情况下，虽然可以通过模拟的手段来隔离Android依赖，但代价很大，这种情况下可以考虑仪器化的单元测试，有助于减少编写和维护模拟代码所需的工作量。
+
+仪器化测试是在真机或模拟器上运行的测试，它们可以利用Android framework APIs 和 supporting APIs。如果测试用例需要访问仪器(instrumentation)信息(如应用程序的Context)，或者需要Android框架组件的真正实现(如Parcelable或SharedPreferences对象)，那么应该创建仪器化单元测试，由于要跑到真机或模拟器上，所以会慢一些。
 
 - 配置
 
@@ -162,45 +196,89 @@ android {
     }
 }
 ```
-- Android中Parcelabe的读写操作，这个就不太好模拟
+- Example
+这里举一个操作SharedPreference的例子，这个例子需要访问Context类以及SharedPreference的具体实现，采用模拟隔离依赖的话代价会比较大，所以采用仪器化测试比较合适。
 
+这是业务代码中操作SharedPreference的实现
 ```
-// @RunWith 只在混合使用 JUnit3 和 JUnit4 需要，若只使用JUnit4，可省略
-@RunWith(AndroidJUnit4.class)
-@SmallTest
-public class LogHistoryAndroidUnitTest {
+public class SharedPreferenceDao {
+    private SharedPreferences sp;
 
-    public static final String TEST_STRING = "This is a string";
-    public static final long TEST_LONG = 12345678L;
-    private LogHistory mLogHistory;
-
-    @Before
-    public void setUp() {
-        mLogHistory = new LogHistory();
+    public SharedPreferenceDao(SharedPreferences sp) {
+        this.sp = sp;
     }
 
-    @Test
-    public void logHistory_ParcelableWriteRead() {
-        mLogHistory.addEntry(TEST_STRING, TEST_LONG);
+    public SharedPreferenceDao(Context context) {
+        this(context.getSharedPreferences("config", Context.MODE_PRIVATE));
+    }
 
-        // 写数据
-        Parcel parcel = Parcel.obtain();
-        mLogHistory.writeToParcel(parcel, mLogHistory.describeContents());
+    public void put(String key, String value) {
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putString(key, value);
+        editor.apply();
+    }
 
-        // 为接下来的读操作，写完数据后需要重置parcel
-        parcel.setDataPosition(0);
-
-        // 读数据
-        LogHistory createdFromParcel = LogHistory.CREATOR.createFromParcel(parcel);
-        List<Pair<String, Long>> createdFromParcelData = createdFromParcel.getData();
-
-        // 验证接收到的数据是否正确
-        assertThat(createdFromParcelData.size(), is(1));
-        assertThat(createdFromParcelData.get(0).first, is(TEST_STRING));
-        assertThat(createdFromParcelData.get(0).second, is(TEST_LONG));
+    public String get(String key) {
+        return sp.getString(key, null);
     }
 }
 ```
+
+创建仪器化测试类（app/src/androidTest/java）
+```
+// @RunWith 只在混合使用 JUnit3 和 JUnit4 需要，若只使用JUnit4，可省略
+@RunWith(AndroidJUnit4.class)
+public class SharedPreferenceDaoTest {
+
+    public static final String TEST_KEY = "instrumentedTest";
+    public static final String TEST_STRING = "玉刚说";
+
+    SharedPreferenceDao spDao;
+
+    @Before
+    public void setUp() {
+        spDao = new SharedPreferenceDao(App.getContext());
+    }
+
+    @Test
+    public void sharedPreferenceDaoWriteRead() {
+        spDao.put(TEST_KEY, TEST_STRING);
+        Assert.assertEquals(TEST_STRING, spDao.get(TEST_KEY));
+    }
+}
+```
+运行方式和本地单元测试一样，这个过程会向连接的设备安装apk，测试结果将在Run窗口展示，如下图：
+
+![instrumented test passed](https://upload-images.jianshu.io/upload_images/3631399-af13137ec347a9b6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+通过测试结果可以清晰看到状态passed，仔细看打印的log，可以发现，这个过程向模拟器安装了两个apk文件，分别是app-debug.apk和app-debug-androidTest.apk，instrumented测试相关的逻辑在app-debug-androidTest.apk中。简单介绍一下安装apk命令pm install:
+```
+// 安装apk
+//-t：允许安装测试 APK
+//-r：重新安装现有应用，保留其数据，类似于替换安装
+//更多请参考 https://developer.android.com/studio/command-line/adb?hl=zh-cn
+adb shell pm install -t -r filePath
+```
+
+安装完这两个apk后，通过```am instrument```命令运行instrumented测试用例，该命令的一般格式：
+```
+am instrument [flags] <test_package>/<runner_class>
+```
+例如本例子中的实际执行命令：
+```
+adb shell am instrument -w -r -e debug false -e class 'com.jdqm.androidunittest.SharedPreferenceDaoTest#sharedPreferenceDaoWriteRead' com.jdqm.androidunittest.test/android.support.test.runner.AndroidJUnitRunner
+```
+```
+-w: 强制 am instrument 命令等待仪器化测试结束才结束自己(wait)，保证命令行窗口在测试期间不关闭，方便查看测试过程的log
+-r: 以原始格式输出结果(raw format)
+-e: 以键值对的形式提供测试选项，例如 -e debug false
+关于这个命令的更多信息请参考
+https://developer.android.com/studio/test/command-line?hl=zh-cn
+```
+
+如果你实在没法忍受instrumented test的耗时问题，业界也提供了一个现成的方案[Robolectric][3]，下一小节讲开源框库的时候会将这个例子改成本地本地测试。
+
+
 # 六、常用单元测试开源库
 #### 1. [Mocktio][1]
 
@@ -325,11 +403,32 @@ android {
 ```
 
 - Example
+模拟打开MainActivity，点击界面上面的Button，读取TextView的文本信息。
 
+MainActivity.java
+```
+public class MainActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        final TextView tvResult = findViewById(R.id.tvResult);
+        Button button = findViewById(R.id.button);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tvResult.setText("Robolectric Rocks!");
+            }
+        });
+    }
+}
+```
+测试类(app/src/test/java/)
 ```
 @RunWith(RobolectricTestRunner.class)
 public class MyActivityTest {
-    
+
     @Test
     public void clickingButton_shouldChangeResultsViewText() throws Exception {
         MainActivity activity = Robolectric.setupActivity(MainActivity.class);
@@ -341,16 +440,57 @@ public class MyActivityTest {
     }
 }
 ```
+测试结果
+![Robolectric test passed](https://upload-images.jianshu.io/upload_images/3631399-3a0bba49cccc15a1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+耗时917毫秒，是要比单纯的本地测试慢一些。这个例子非常类似于直接跑到真机或模拟器上，然而它只需要跑在本地JVM即可，这都是得益于Robolectric的Shadow。
+> Note: 第一次跑需要下载一些依赖，可能时间会久一点，但后续的测试肯定比仪器化测试打包两个apk并安装的过程快。
+
+在第六小节介绍了通过仪器化测试的方式跑到真机上进行测试SharedPreferences操作，可能吐槽的点都在于耗时太长，现在通过[Robolectric][3]改写为本地测试来尝试减少一些耗时。
+
+在实际的项目中，Application可能创建时可能会初始化一些其他的依赖库，不太方便单元测试，这里额外创建一个Application类，不需要在清单文件注册，直接写在本地测试目录即可。
+```
+public class RoboApp extends Application {}
+```
+在编写测试类的时候需要通过```@Config(application = RoboApp.class)```来配置Application，当需要传入Context的时候调用```RuntimeEnvironment.application```来获取：
+app/src/test/java/
+```
+@RunWith(RobolectricTestRunner.class)
+@Config(application = RoboApp.class)
+public class SharedPreferenceDaoTest {
+
+    public static final String TEST_KEY = "instrumentedTest";
+    public static final String TEST_STRING = "玉刚说";
+
+    SharedPreferenceDao spDao;
+
+    @Before
+    public void setUp() {
+        //这里的Context采用RuntimeEnvironment.application来替代应用的Context
+        spDao = new SharedPreferenceDao(RuntimeEnvironment.application);
+    }
+
+    @Test
+    public void sharedPreferenceDaoWriteRead() {
+        spDao.put(TEST_KEY, TEST_STRING);
+        Assert.assertEquals(TEST_STRING, spDao.get(TEST_KEY));
+    }
+
+}
+```
+像本地此时一样把它跑起来即可。
+
+
 # 七、实践经验
 
 #### 1. 代码中用到了TextUtil.isEmpty()的如何测试
 ```
-    public static boolean isValidEmail(CharSequence email) {
-        if (TextUtils.isEmpty(email)) {
-            return false;
-        }
-        return EMAIL_PATTERN.matcher(email).matches();
+public static boolean isValidEmail(CharSequence email) {
+    if (TextUtils.isEmpty(email)) {
+        return false;
     }
+    return EMAIL_PATTERN.matcher(email).matches();
+}
 ```
 当你尝试本地测试这样的代码，就会收到一下的异常：
 ```
@@ -421,7 +561,7 @@ public class Presenter {
 public class PresenterTest {
     Model     model;
     Presenter presenter;
-    
+
     @Before
     public void setUp() throws Exception {
         // mock Model对象
@@ -457,7 +597,7 @@ public class Environment {
 public class FileDaoTest {
 
     public static final String TEST_STRING = "Hello Android Unit Test.";
-    
+
     FileDao fileDao;
 
     @Before
@@ -488,12 +628,13 @@ public class FileDaoTest {
 [https://github.com/jdqm/AndroidUnitTest][6]
 
 参考资料
-
 https://developer.android.com/training/testing/unit-testing/
 https://developer.android.com/training/testing/unit-testing/local-unit-tests
 https://developer.android.com/training/testing/unit-testing/instrumented-unit-tests
 https://blog.dreamtobe.cn/2016/05/15/android_test/
 https://www.jianshu.com/p/bc99678b1d6e
+https://developer.android.com/studio/test/command-line?hl=zh-cn
+https://developer.android.com/studio/command-line/adb?hl=zh-cn
 
 [1]: https://github.com/mockito/mockito
 [2]: https://github.com/cglib/cglib
@@ -501,3 +642,4 @@ https://www.jianshu.com/p/bc99678b1d6e
 [4]: https://github.com/powermock/powermock
 [5]: https://upload-images.jianshu.io/upload_images/3631399-11da81c156bed56a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240
 [6]: https://github.com/jdqm/AndroidUnitTest
+[7]: https://developer.android.com/studio/test/command-line?hl=zh-cn
